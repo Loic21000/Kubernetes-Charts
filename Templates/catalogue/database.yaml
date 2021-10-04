@@ -1,0 +1,79 @@
+---
+
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: sc-manual
+provisioner: cluster.local/nfs-subdir-external-provisioner
+volumeBindingMode: WaitForFirstConsumer
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-manual
+spec:
+  storageClassName: sc-manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  hostPath:
+    path: /mnt/nfs
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-data
+spec:
+  storageClassName: sc-manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+# Create the SQL Server deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mssql-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mssql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mssql
+    spec:
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: mssql
+        image: mcr.microsoft.com/mssql/rhel/server:2019-latest
+        ports:
+        - containerPort: 1433
+        env:
+        - name: MSSQL_PID
+          value: "Developer"
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: MSSQL_SA_PASSWORD
+          value: "Azerty123"
+        volumeMounts:
+        - name: mssqldb
+          mountPath: /mnt/nfs
+      volumes:
+      - name: mssqldb
+        persistentVolumeClaim:
+          claimName: mssql-data

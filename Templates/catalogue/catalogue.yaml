@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalogue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalogue
+  template:
+    metadata:
+      labels:
+        app: catalogue
+    spec:
+      containers:
+        - name: catalogue
+          image: diiage3dockerhub/projet1:latest
+          ports:
+            - containerPort: 80
+              name: http
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue-service
+spec:
+  selector:
+    app: catalogue
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  type: LoadBalancer
